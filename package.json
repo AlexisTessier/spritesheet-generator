@@ -1,6 +1,6 @@
 {
   "name": "@alexistessier/spritesheet-generator",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "A javascript spritesheet generator",
   "main": "index.js",
   "scripts": {
@@ -28,7 +28,7 @@
   },
   "dependencies": {
     "directory-tree": "^1.0.0",
-    "jakes-gordon-growing-packer": "0.0.11",
+    "jakes-gordon-growing-packer": "0.0.12",
     "jimp": "^0.2.22",
     "lodash": "^4.11.1"
   }
