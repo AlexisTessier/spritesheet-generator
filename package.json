@@ -1,6 +1,6 @@
 {
   "name": "@alexistessier/spritesheet-generator",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "A javascript spritesheet generator",
   "main": "index.js",
   "scripts": {
@@ -27,9 +27,10 @@
     "@alexistessier/gulp-workflow-common-task": "^2.1.0"
   },
   "dependencies": {
+    "@alexistessier/gulp-workflow-common-task": "^2.1.3",
     "directory-tree": "^1.0.0",
     "jakes-gordon-growing-packer": "0.0.12",
-    "jimp": "^0.2.22",
-    "lodash": "^4.11.1"
+    "jimp": "^0.2.24",
+    "lodash": "^4.12.0"
   }
 }
