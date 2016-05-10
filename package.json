@@ -31,7 +31,7 @@
   },
   "dependencies": {
     "glob": "^7.0.3",
-    "jakes-gordon-growing-packer": "0.0.12",
+    "jakes-gordon-growing-packer": "0.0.13",
     "jimp": "^0.2.24",
     "lodash": "^4.12.0"
   }
