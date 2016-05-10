@@ -29,18 +29,4 @@ npm install {{& package.name}}
 
 How to use
 ----------
-
-var path = require('path');
-
-var SpritesheetGenerator = require('spritesheet-generator');
-
-var gen = new SpritesheetGenerator({
-	inputPath : path.join(__dirname, 'src/asset/spritesheet'),
-	outputPath : path.join(__dirname, 'src/generated-spritesheets'),
-	retina : true,
-	processor : 'stylus'
-});
-
-gen.run();
-
 ...

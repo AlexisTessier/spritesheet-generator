@@ -1,6 +1,6 @@
 {
   "name": "@alexistessier/spritesheet-generator",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "description": "A javascript spritesheet generator",
   "main": "index.js",
   "scripts": {
@@ -24,11 +24,13 @@
   },
   "homepage": "https://github.com/AlexisTessier/spritesheet-generator#readme",
   "devDependencies": {
-    "@alexistessier/gulp-workflow-common-task": "^2.1.0"
+    "@alexistessier/gulp-workflow-common-task": "^2.1.3",
+    "@alexistessier/report": "^1.0.3",
+    "minimist": "^1.2.0",
+    "source-map-support": "^0.4.0"
   },
   "dependencies": {
-    "@alexistessier/gulp-workflow-common-task": "^2.1.3",
-    "directory-tree": "^1.0.0",
+    "glob": "^7.0.3",
     "jakes-gordon-growing-packer": "0.0.12",
     "jimp": "^0.2.24",
     "lodash": "^4.12.0"
