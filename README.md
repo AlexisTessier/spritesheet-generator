@@ -4,7 +4,7 @@
 
 ![Project Status : work in progress](https://img.shields.io/badge/Project%20status-work%20in%20progress-lightgrey.svg)
 
-[![version](https://img.shields.io/badge/version-0.0.8-blue.svg)](https://github.com/AlexisTessier/spritesheet-generator#readme)
+[![version](https://img.shields.io/badge/version-0.0.9-blue.svg)](https://github.com/AlexisTessier/spritesheet-generator#readme)
 [![npm version](https://badge.fury.io/js/%40alexistessier%2Fspritesheet-generator.svg)](https://badge.fury.io/js/%40alexistessier%2Fspritesheet-generator)
 
 [![Dependency Status](https://david-dm.org/AlexisTessier/spritesheet-generator.svg)](https://david-dm.org/AlexisTessier/spritesheet-generator)

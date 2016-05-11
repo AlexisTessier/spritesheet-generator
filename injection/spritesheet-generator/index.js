@@ -1,0 +1,1 @@
+module.exports = require('../../build/injection/spritesheet-generator').default;

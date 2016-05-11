@@ -127,21 +127,5 @@ SpritesheetGenerator.prototype.generateSpritesheet = function(name, descriptor, 
 				self.createStylesheet(output, options);
 			}
 		}
-
-		_.forEach(device, function (sprite, spriteName) {
-			var spriteSelector = '$'+styleClassPrefix+'-'+spriteName+deviceSuffix;
-			spriteSelectorList.push(spriteSelector);
-			var spritePath = path.join(options.inputPath, sprite.path);
-			jimp.read(spritePath, function (err, spriteImage) {
-				if (err) throw err;
-				spritesheetImageContent.push({
-					name: spriteName,
-					selector: spriteSelector,
-					image: spriteImage
-				});
-
-				if (spritesheetImageContent.length >= spriteCount) {spriteProcessingReady()};
-			});
-		});
 	});
 };

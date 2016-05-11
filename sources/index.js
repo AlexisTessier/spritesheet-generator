@@ -7,7 +7,8 @@ import {
 	chain,
 	isFunction,
 	takeRight,
-	forEach
+	forEach,
+	size
 } from 'lodash';
 
 
@@ -80,13 +81,20 @@ class SpritesheetGenerator {
 	}
 
 	inject({
-		blockPackingMethod
+		blockPackingMethod,
+		imageProcessingLibrary
 	}){
 		assert(isFunction(blockPackingMethod), 'blockPackingMethod dependency must be a function');
 
+		assert(isFunction(imageProcessingLibrary), 'imageProcessingLibrary dependency must be an function');
+		assert(isFunction(imageProcessingLibrary.read), 'imageProcessingLibrary dependency must implement a read method');
+
 		assign(this, {
-			blockPacker
+			blockPackingMethod,
+			imageProcessingLibrary
 		});
+
+		return this;
 	}
 
 	run(){
@@ -109,8 +117,8 @@ class SpritesheetGenerator {
 		return this.spritesheetNameFromPathMethod(spritesheetFolderPath, this);
 	}
 
-	fetchFolderContent(path, callback){
-		glob(path, (err, pathList) => {
+	fetchFolderContent(folderPath, callback){
+		glob(folderPath, (err, pathList) => {
 			if (err) {throw err;return;}
 
 			isFunction(callback) ? callback(pathList): null;
@@ -154,15 +162,42 @@ class SpritesheetGenerator {
 		});
 	}
 
+	fetchSpriteListSpriteImage(spriteList, callback){
+		let spriteFileOpenedCount = 0, spriteListSize = size(spriteList);
+
+		forEach(spriteList, sprite => {
+			this.imageProcessingLibrary.read(sprite.filePath, function (err, spriteImage) {
+				if (err) {throw err;return;}
+
+				assign(sprite, {
+					image: spriteImage,
+					w: spriteImage.bitmap.width,
+					h: spriteImage.bitmap.height
+				});
+				spriteFileOpenedCount++;
+
+				if (spriteFileOpenedCount >= spriteListSize && isFunction(callback)) {
+					callback(spriteList);
+				}
+			});
+
+		});
+	}
+
 	generateSpritesheet(spritesheet){
 		this.fetchSpritesheetSpriteList(spritesheet, spriteList => {
-			console.log(spriteList);
-			//WORK IN PROGRESS
-			//TO DO
-			//jimp open each sprite et set width et height
-			//pack with growing packer
-			//create the spritesheet with jimp
+			this.fetchSpriteListSpriteImage(spriteList, spriteList => {
+				this.composeSpritesheet(spritesheet);
+			});
 		});
+	}
+
+	composeSpritesheet(spritesheet){
+		console.log(spritesheet);
+		//WORK IN PROGRESS
+		//TO DO
+		//pack with growing packer
+		//create the spritesheet with jimp
 	}
 }
 
