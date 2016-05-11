@@ -23,9 +23,10 @@ import assert from 'assert';
 /*--------------------*/
 
 const BASE_SCREEN_DPI = 96;
+const SPRITESHEET_FILE_EXTENSION = '.png';
 
 function defaultResolutionSuffixFormatMethod(resolution, processor, image, generator) {
-	return '_'+resolution+'x';
+	return '@'+resolution+'x';
 }
 
 function defaultSpritesheetNameFromPathMethod (spritesheetFolderPath, generator) {
@@ -72,7 +73,7 @@ class SpritesheetGenerator {
 
 		this.eventEmitter = new EventEmitter({
 			eventList : ['after-run']
-		})
+		});
 
 		this.spritesheetList = [];
 		this.running = false;
@@ -139,7 +140,6 @@ class SpritesheetGenerator {
 
 	fetchSpritesheetList(callback){
 		this.fetchFolderContent(this.spritesheetInputFolderPath('*'), folders => {
-
 			this.spritesheetList = chain(folders).keyBy(folder => {
 				return this.spritesheetNameFromFolderPath(folder);
 			}).mapValues((folderPath, name) => {
@@ -151,12 +151,10 @@ class SpritesheetGenerator {
 	}
 
 	fetchSpritesheetSpriteList(spritesheet, callback){
-		let fileExt = '.png';
-
-		this.fetchFolderContent(path.join(spritesheet.folderPath, '*'+fileExt), sprites => {
+		this.fetchFolderContent(path.join(spritesheet.folderPath, '*'+SPRITESHEET_FILE_EXTENSION), sprites => {
 
 			spritesheet.spriteList = chain(sprites).keyBy(sprite => {
-				return path.basename(sprite, fileExt);
+				return path.basename(sprite, SPRITESHEET_FILE_EXTENSION);
 			}).mapValues((filePath, name) => {
 				return {name, filePath};
 			}).value();
@@ -167,7 +165,6 @@ class SpritesheetGenerator {
 
 	generateSpritesheets(){
 		this.fetchSpritesheetList(spritesheetList => {
-
 			forEach(spritesheetList, spritesheet => {
 				this.generateSpritesheet(spritesheet);
 			});
@@ -224,7 +221,7 @@ class SpritesheetGenerator {
 			let ratio = resolution/this.sourceResolution;
 
 			let spritesheetImage = this.imageProcessingLibrary.createImage(spritesheet.width, spritesheet.height, (err, image) => {
-				if (err) throw err;return;
+				if (err){throw err;return;}
 
 				/*for(var n = 0 ; n < blocks.length ; n++) {
 					var block = blocks[n];
@@ -250,7 +247,11 @@ class SpritesheetGenerator {
 	}
 
 	generateSpritsheetOutputPath(spritesheet, resolution){
-		
+		return path.join(this.outputPath, (
+			this.spritesheetPrefix+spritesheet.name+this.spritesheetSuffix+(
+				resolution === this.mainResolution ? '' : this.resolutionSuffixFormatMethod(resolution)
+			)+SPRITESHEET_FILE_EXTENSION
+		));
 	}
 }
 
