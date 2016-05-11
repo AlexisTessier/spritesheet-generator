@@ -16,14 +16,6 @@ class EventEmitter {
 		});
 	}
 
-	/*inject(){
-		return this;
-	}
-
-	init(){
-		return this;
-	}*/
-
 	emit(eventName, ...params){
 		forEach(this.eventListener[eventName], listener => {
 			listener(...params);
@@ -68,9 +60,9 @@ class EventEmitter {
 	}
 }
 
-EventEmitter.attachEventEmitterInterface = function (klass, eventEmitterPropertyAlias = 'eventEmitter') {
+EventEmitter.attachEventEmitterInterface = function (target, eventEmitterPropertyAlias = 'eventEmitter') {
 	forEach(['emit', 'on', 'off'], method => {
-		klass.prototype[method] = function (...params) {
+		target.prototype[method] = function (...params) {
 			this[eventEmitterPropertyAlias][method](...params);
 		};
 	});

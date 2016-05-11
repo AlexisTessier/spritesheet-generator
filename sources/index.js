@@ -6,11 +6,11 @@ import {
 	keyBy,
 	chain,
 	isFunction,
+	isObject,
 	takeRight,
 	forEach,
 	size
 } from 'lodash';
-
 
 import EventEmitter from './event-emitter';
 
@@ -25,7 +25,7 @@ import assert from 'assert';
 const BASE_SCREEN_DPI = 96;
 
 function defaultResolutionSuffixFormatMethod(resolution, processor, image, generator) {
-	return '@'+resolution+'x';
+	return '_'+resolution+'x';
 }
 
 function defaultSpritesheetNameFromPathMethod (spritesheetFolderPath, generator) {
@@ -42,13 +42,14 @@ class SpritesheetGenerator {
 		processorUtilsSuffix = '',
 		spritesheetPrefix = '',
 		spritesheetSuffix = '',
-		retina = false,
+		retina = true,
 		sourceResolution = retina ? 2 : 1,
 		availableResolutionList = retina ? [2, 1] : [1],
 		mainResolution = 1,
 		resolutionSuffixFormatMethod = defaultResolutionSuffixFormatMethod,
 		spritesheetNameFromPathMethod = defaultSpritesheetNameFromPathMethod,
-		spritesheetNameFromPathTakeRightNumber = 1
+		spritesheetNameFromPathTakeRightNumber = 1,
+		spriteGutter = 2
 	}={}) {
 
 		assign(this, {
@@ -65,7 +66,8 @@ class SpritesheetGenerator {
 			mainResolution,
 			resolutionSuffixFormatMethod,
 			spritesheetNameFromPathMethod,
-			spritesheetNameFromPathTakeRightNumber
+			spritesheetNameFromPathTakeRightNumber,
+			spriteGutter
 		});
 
 		this.eventEmitter = new EventEmitter({
@@ -82,19 +84,29 @@ class SpritesheetGenerator {
 
 	inject({
 		blockPackingMethod,
-		imageProcessingLibrary
+		imageProcessingLibrary,
+		reporter
 	}){
 		assert(isFunction(blockPackingMethod), 'blockPackingMethod dependency must be a function');
 
-		assert(isFunction(imageProcessingLibrary), 'imageProcessingLibrary dependency must be an function');
+		assert(isObject(imageProcessingLibrary), 'imageProcessingLibrary dependency must be an object');
 		assert(isFunction(imageProcessingLibrary.read), 'imageProcessingLibrary dependency must implement a read method');
+		assert(isFunction(imageProcessingLibrary.createImage), 'imageProcessingLibrary dependency must implement a createImage method');
+
+		assert(isObject(reporter), 'reporter dependency must be an object');
+		assert(isFunction(reporter.report), 'reporter dependency must implement a report method');
 
 		assign(this, {
 			blockPackingMethod,
-			imageProcessingLibrary
+			imageProcessingLibrary,
+			reporter
 		});
 
 		return this;
+	}
+
+	report(...args){
+		this.reporter.report(...args);
 	}
 
 	run(){
@@ -130,8 +142,8 @@ class SpritesheetGenerator {
 
 			this.spritesheetList = chain(folders).keyBy(folder => {
 				return this.spritesheetNameFromFolderPath(folder);
-			}).mapValues((filePath, name) => {
-				return {name, filePath};
+			}).mapValues((folderPath, name) => {
+				return {name, folderPath};
 			}).value();
 
 			isFunction(callback) ? callback(this.spritesheetList): null;
@@ -141,7 +153,7 @@ class SpritesheetGenerator {
 	fetchSpritesheetSpriteList(spritesheet, callback){
 		let fileExt = '.png';
 
-		this.fetchFolderContent(path.join(spritesheet.filePath, '*'+fileExt), sprites => {
+		this.fetchFolderContent(path.join(spritesheet.folderPath, '*'+fileExt), sprites => {
 
 			spritesheet.spriteList = chain(sprites).keyBy(sprite => {
 				return path.basename(sprite, fileExt);
@@ -166,14 +178,15 @@ class SpritesheetGenerator {
 		let spriteFileOpenedCount = 0, spriteListSize = size(spriteList);
 
 		forEach(spriteList, sprite => {
-			this.imageProcessingLibrary.read(sprite.filePath, function (err, spriteImage) {
+			this.imageProcessingLibrary.read(sprite.filePath, (err, spriteImage) => {
 				if (err) {throw err;return;}
 
 				assign(sprite, {
 					image: spriteImage,
-					w: spriteImage.bitmap.width,
-					h: spriteImage.bitmap.height
+					w: spriteImage.bitmap.width+(this.spriteGutter*2),
+					h: spriteImage.bitmap.height+(this.spriteGutter*2)
 				});
+
 				spriteFileOpenedCount++;
 
 				if (spriteFileOpenedCount >= spriteListSize && isFunction(callback)) {
@@ -193,11 +206,51 @@ class SpritesheetGenerator {
 	}
 
 	composeSpritesheet(spritesheet){
-		console.log(spritesheet);
+		let packSize = this.blockPackingMethod(
+			chain(spritesheet.spriteList).map(sprite => {
+				return sprite;
+			}).sortBy(sprite => {
+				return sprite.name;
+			}).value()
+		);
+
+		assign(spritesheet, packSize);
+
 		//WORK IN PROGRESS
 		//TO DO
-		//pack with growing packer
-		//create the spritesheet with jimp
+		//create the spritesheet with jimp for each available resolution
+
+		forEach(this.availableResolutionList, resolution => {
+			let ratio = resolution/this.sourceResolution;
+
+			let spritesheetImage = this.imageProcessingLibrary.createImage(spritesheet.width, spritesheet.height, (err, image) => {
+				if (err) throw err;return;
+
+				/*for(var n = 0 ; n < blocks.length ; n++) {
+					var block = blocks[n];
+
+					if (block.fit) {
+						if (ratio !== 1) {
+							block.img.image.quality(100).resize(block.rw, block.rh);
+						}
+						image.composite(block.img.image, block.fit.x+(2*ratio), block.fit.y+(2*ratio));
+					}
+				}*/
+
+				let outputPath = this.generateSpritsheetOutputPath(spritesheet, resolution);
+				console.log(outputPath)
+
+				/*image.write(outputPath, err => {
+					if (err) throw err;
+					
+					//console.log('Spritesheet successfully generated at '+spritesheetInfos.outputPath);
+				});*/
+			});
+		});
+	}
+
+	generateSpritsheetOutputPath(spritesheet, resolution){
+		
 	}
 }
 
