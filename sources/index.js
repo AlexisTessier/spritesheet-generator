@@ -5,12 +5,17 @@ import {
 	last,
 	keyBy,
 	chain,
+	isArray,
+	map,
 	isFunction,
 	isObject,
 	takeRight,
 	forEach,
-	size
+	size,
+	isString
 } from 'lodash';
+
+import mkdirp from 'mkdirp';
 
 import EventEmitter from './event-emitter';
 
@@ -19,6 +24,8 @@ import glob from 'glob';
 import path from 'path';
 
 import assert from 'assert';
+
+import processorList from './processor'
 
 /*--------------------*/
 
@@ -37,7 +44,7 @@ class SpritesheetGenerator {
 	constructor({
 		inputPath,
 		outputPath,
-		processor,
+		processor = 'css',
 		processorUtilsStrategy = 'both', //mixin, abstract class or both
 		processorUtilsPrefix = '',
 		processorUtilsSuffix = '',
@@ -56,7 +63,7 @@ class SpritesheetGenerator {
 		assign(this, {
 			inputPath,
 			outputPath,
-			processor,
+			processor: isArray(processor) ? processor : [processor],
 			processorUtilsStrategy,
 			processorUtilsPrefix,
 			processorUtilsSuffix,
@@ -144,6 +151,17 @@ class SpritesheetGenerator {
 				return this.spritesheetNameFromFolderPath(folder);
 			}).mapValues((folderPath, name) => {
 				return {name, folderPath};
+			}).forEach((spritesheet, name) => {
+				spritesheet.versionList = map(this.availableResolutionList, resolution => {
+					return{
+						name,
+						resolution,
+						ratio: resolution/this.sourceResolution,
+						resolutionSuffix: this.resolutionSuffixFormatMethod(resolution),
+						isMainResolution: resolution === this.mainResolution,
+						folderPath: spritesheet.folderPath
+					};
+				});
 			}).value();
 
 			isFunction(callback) ? callback(this.spritesheetList): null;
@@ -156,7 +174,7 @@ class SpritesheetGenerator {
 			spritesheet.spriteList = chain(sprites).keyBy(sprite => {
 				return path.basename(sprite, SPRITESHEET_FILE_EXTENSION);
 			}).mapValues((filePath, name) => {
-				return {name, filePath};
+				return {name, filePath, ratio: spritesheet.ratio};
 			}).value();
 
 			isFunction(callback) ? callback(spritesheet.spriteList): null;
@@ -165,9 +183,27 @@ class SpritesheetGenerator {
 
 	generateSpritesheets(){
 		this.fetchSpritesheetList(spritesheetList => {
+
+			let spritesheetCount = size(spritesheetList);
+			let packedSpritesheetCount = 0;
+
 			forEach(spritesheetList, spritesheet => {
-				this.generateSpritesheet(spritesheet);
+				let versionCount = size(spritesheet.versionList);
+				let packedVersionCount = 0;
+				forEach(spritesheet.versionList, version => {
+					this.generateSpritesheet(version, ()=>{
+						packedVersionCount++;
+						if(packedVersionCount === versionCount){
+							packedSpritesheetCount++;
+
+							if(packedSpritesheetCount === spritesheetCount){
+								this.generateStylesheet();
+							}
+						}
+					});
+				});
 			});
+
 		});
 	}
 
@@ -178,10 +214,16 @@ class SpritesheetGenerator {
 			this.imageProcessingLibrary.read(sprite.filePath, (err, spriteImage) => {
 				if (err) {throw err;return;}
 
+				let outputSize = {
+					width: Math.round(spriteImage.bitmap.width*sprite.ratio),
+					height: Math.round(spriteImage.bitmap.height*sprite.ratio)
+				};
+
 				assign(sprite, {
 					image: spriteImage,
-					w: spriteImage.bitmap.width+(this.spriteGutter*2),
-					h: spriteImage.bitmap.height+(this.spriteGutter*2)
+					w: outputSize.width+(this.spriteGutter*2),
+					h: outputSize.height+(this.spriteGutter*2),
+					outputSize
 				});
 
 				spriteFileOpenedCount++;
@@ -194,15 +236,16 @@ class SpritesheetGenerator {
 		});
 	}
 
-	generateSpritesheet(spritesheet){
+	generateSpritesheet(spritesheet, afterPackingCallback){
 		this.fetchSpritesheetSpriteList(spritesheet, spriteList => {
 			this.fetchSpriteListSpriteImage(spriteList, spriteList => {
+				this.packing(spritesheet, afterPackingCallback);
 				this.composeSpritesheet(spritesheet);
 			});
 		});
 	}
 
-	composeSpritesheet(spritesheet){
+	packing(spritesheet, callback){
 		let packSize = this.blockPackingMethod(
 			chain(spritesheet.spriteList).map(sprite => {
 				return sprite;
@@ -212,46 +255,54 @@ class SpritesheetGenerator {
 		);
 
 		assign(spritesheet, packSize);
+		
+		isFunction(callback) ? callback() : null;
+	}
 
-		//WORK IN PROGRESS
-		//TO DO
-		//create the spritesheet with jimp for each available resolution
+	composeSpritesheet(spritesheet){
+		let spritesheetImage = this.imageProcessingLibrary.createImage(spritesheet.width, spritesheet.height, (err, spritesheetImage) => {
+			if (err){throw err;return;}
 
-		forEach(this.availableResolutionList, resolution => {
-			let ratio = resolution/this.sourceResolution;
-
-			let spritesheetImage = this.imageProcessingLibrary.createImage(spritesheet.width, spritesheet.height, (err, image) => {
-				if (err){throw err;return;}
-
-				/*for(var n = 0 ; n < blocks.length ; n++) {
-					var block = blocks[n];
-
-					if (block.fit) {
-						if (ratio !== 1) {
-							block.img.image.quality(100).resize(block.rw, block.rh);
-						}
-						image.composite(block.img.image, block.fit.x+(2*ratio), block.fit.y+(2*ratio));
+			forEach(spritesheet.spriteList, sprite => {
+				if(sprite.fit){
+					if (sprite.ratio !== 1) {
+						sprite.image.quality(100).resize(sprite.outputSize.width, sprite.outputSize.height);
 					}
-				}*/
+					spritesheetImage.composite(sprite.image, sprite.x+this.spriteGutter, sprite.y+this.spriteGutter);
+				}
 
-				let outputPath = this.generateSpritsheetOutputPath(spritesheet, resolution);
-				console.log(outputPath)
-
-				/*image.write(outputPath, err => {
-					if (err) throw err;
-					
-					//console.log('Spritesheet successfully generated at '+spritesheetInfos.outputPath);
-				});*/
 			});
+
+			let outputPath = this.generateSpritsheetOutputPath(spritesheet);
+
+			mkdirp(path.dirname(outputPath), err => {
+			    if (err){throw err;return;}
+
+			    spritesheetImage.write(outputPath, err => {
+					if (err){throw err;return;}
+					
+					this.report('notice', 'Spritesheet successfully generated at '+outputPath);
+				});
+			});
+		});	
+	}
+
+	generateSpritsheetOutputPath(spritesheet){
+		return path.join(this.outputPath, (
+			this.spritesheetPrefix+spritesheet.name+this.spritesheetSuffix+(
+				spritesheet.isMainResolution ? '' : spritesheet.resolutionSuffix
+			)+SPRITESHEET_FILE_EXTENSION
+		));
+	}
+
+	generateStylesheet(){
+		forEach(this.processor, processor => {
+			this.runStylesheetProcessor(isString(processor) ? processorList[processor] : processor);
 		});
 	}
 
-	generateSpritsheetOutputPath(spritesheet, resolution){
-		return path.join(this.outputPath, (
-			this.spritesheetPrefix+spritesheet.name+this.spritesheetSuffix+(
-				resolution === this.mainResolution ? '' : this.resolutionSuffixFormatMethod(resolution)
-			)+SPRITESHEET_FILE_EXTENSION
-		));
+	runStylesheetProcessor(processor){
+		console.log(processor);
 	}
 }
 
