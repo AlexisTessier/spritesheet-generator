@@ -25,6 +25,8 @@ import path from 'path';
 
 import assert from 'assert';
 
+import fs from 'fs';
+
 import processorList from './processor'
 
 /*--------------------*/
@@ -32,20 +34,24 @@ import processorList from './processor'
 const BASE_SCREEN_DPI = 96;
 const SPRITESHEET_FILE_EXTENSION = '.png';
 
-function defaultResolutionSuffixFormatMethod(resolution, processor, image, generator) {
+function defaultResolutionSuffixFormatMethod(resolution, generator) {
 	return '@'+resolution+'x';
 }
 
 function defaultSpritesheetNameFromPathMethod (spritesheetFolderPath, generator) {
-	return takeRight(spritesheetFolderPath.split('/'), generator.spritesheetNameFromPathTakeRightNumber).join('--');
+	return takeRight(spritesheetFolderPath.split('/'), generator.spritesheetNameFromPathArrayTakeRightNumber).join('--');
 }
 
 class SpritesheetGenerator {
 	constructor({
 		inputPath,
+		inputSpritesheetPath = inputPath,
+		inputSpritePath = '*'+SPRITESHEET_FILE_EXTENSION,
 		outputPath,
+		spritesheetsOutputPath = outputPath,
+		stylesheetsOutputPath = outputPath,
 		processor = 'css',
-		processorUtilsStrategy = 'both', //mixin, abstract class or both
+		processorUtilsStrategy = ['mixin', 'abstract class'],
 		processorUtilsPrefix = '',
 		processorUtilsSuffix = '',
 		spritesheetPrefix = '',
@@ -56,13 +62,17 @@ class SpritesheetGenerator {
 		mainResolution = 1,
 		resolutionSuffixFormatMethod = defaultResolutionSuffixFormatMethod,
 		spritesheetNameFromPathMethod = defaultSpritesheetNameFromPathMethod,
-		spritesheetNameFromPathTakeRightNumber = 1,
+		spritesheetNameFromPathArrayTakeRightNumber = 1,
 		spriteGutter = 2
 	}={}) {
 
 		assign(this, {
 			inputPath,
+			inputSpritesheetPath,
+			inputSpritePath,
 			outputPath,
+			spritesheetsOutputPath,
+			stylesheetsOutputPath,
 			processor: isArray(processor) ? processor : [processor],
 			processorUtilsStrategy,
 			processorUtilsPrefix,
@@ -74,7 +84,7 @@ class SpritesheetGenerator {
 			mainResolution,
 			resolutionSuffixFormatMethod,
 			spritesheetNameFromPathMethod,
-			spritesheetNameFromPathTakeRightNumber,
+			spritesheetNameFromPathArrayTakeRightNumber,
 			spriteGutter
 		});
 
@@ -130,7 +140,7 @@ class SpritesheetGenerator {
 	}
 
 	spritesheetInputFolderPath(spritesheetName){
-		return path.join(this.inputPath, spritesheetName);
+		return path.join(this.inputSpritesheetPath, spritesheetName);
 	}
 
 	spritesheetNameFromFolderPath(spritesheetFolderPath){
@@ -156,8 +166,9 @@ class SpritesheetGenerator {
 					return{
 						name,
 						resolution,
+						minDpi: this.getMinDpiForResolution(resolution),
 						ratio: resolution/this.sourceResolution,
-						resolutionSuffix: this.resolutionSuffixFormatMethod(resolution),
+						resolutionSuffix: this.resolutionSuffixFormatMethod(resolution, this),
 						isMainResolution: resolution === this.mainResolution,
 						folderPath: spritesheet.folderPath
 					};
@@ -168,8 +179,12 @@ class SpritesheetGenerator {
 		});
 	}
 
+	getMinDpiForResolution(resolution){
+		return BASE_SCREEN_DPI*resolution;
+	}
+
 	fetchSpritesheetSpriteList(spritesheet, callback){
-		this.fetchFolderContent(path.join(spritesheet.folderPath, '*'+SPRITESHEET_FILE_EXTENSION), sprites => {
+		this.fetchFolderContent(path.join(spritesheet.folderPath, this.inputSpritePath), sprites => {
 
 			spritesheet.spriteList = chain(sprites).keyBy(sprite => {
 				return path.basename(sprite, SPRITESHEET_FILE_EXTENSION);
@@ -275,10 +290,8 @@ class SpritesheetGenerator {
 
 			let outputPath = this.generateSpritsheetOutputPath(spritesheet);
 
-			mkdirp(path.dirname(outputPath), err => {
-			    if (err){throw err;return;}
-
-			    spritesheetImage.write(outputPath, err => {
+			this.createOutputDir(outputPath, () => {
+				spritesheetImage.write(outputPath, err => {
 					if (err){throw err;return;}
 					
 					this.report('notice', 'Spritesheet successfully generated at '+outputPath);
@@ -287,22 +300,46 @@ class SpritesheetGenerator {
 		});	
 	}
 
+	createOutputDir(outputPath, callback){
+		mkdirp(path.dirname(outputPath), err => {
+			if (err){throw err;return;}
+			isFunction(callback) ? callback() : null;
+		});
+	}
+
 	generateSpritsheetOutputPath(spritesheet){
-		return path.join(this.outputPath, (
+		return path.join(this.spritesheetsOutputPath, (
 			this.spritesheetPrefix+spritesheet.name+this.spritesheetSuffix+(
 				spritesheet.isMainResolution ? '' : spritesheet.resolutionSuffix
 			)+SPRITESHEET_FILE_EXTENSION
 		));
 	}
 
+	generateStylesheetsOutputPath(stylesheetName){
+		return path.join(this.stylesheetsOutputPath, stylesheetName);
+	}
+
 	generateStylesheet(){
 		forEach(this.processor, processor => {
-			this.runStylesheetProcessor(isString(processor) ? processorList[processor] : processor);
+			this.writeStylesheetFiles(...(isString(processor) ? processorList[processor] : processor)(this));
 		});
 	}
 
-	runStylesheetProcessor(processor){
-		console.log(processor);
+	writeStylesheetFiles(processorName, files, ext){
+		forEach(files, (fileContent, fileName) => {
+			let outputPath = this.generateStylesheetsOutputPath(fileName)+ext;
+			this.createOutputDir(outputPath, () => {
+				fs.writeFile(outputPath, fileContent, err => {
+					if (err){throw err;return;}
+
+					this.report('notice', 'Processor '+processorName+' successfully generate '+outputPath);
+				}); 
+			})
+		});
+	}
+
+	utilName(util){
+		return this.processorUtilsPrefix+util+this.processorUtilsSuffix;
 	}
 }
 
@@ -312,5 +349,7 @@ SpritesheetGenerator.defaultParameters = {
 };
 
 EventEmitter.attachEventEmitterInterface(SpritesheetGenerator);
+//attachComponentInterface(SpritesheetGenerator, 'eventEmitter', 'on', 'off', 'emit');
+//attachComponentInterface(SpritesheetGenerator, 'reporter', 'report');
 
 export default SpritesheetGenerator;
