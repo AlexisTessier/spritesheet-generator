@@ -51,7 +51,6 @@ class SpritesheetGenerator {
 		spritesheetsOutputPath = outputPath,
 		stylesheetsOutputPath = outputPath,
 		processor = 'css',
-		processorUtilsStrategy = ['mixin', 'abstract class'],
 		processorUtilsPrefix = '',
 		processorUtilsSuffix = '',
 		spritesheetPrefix = '',
@@ -63,7 +62,9 @@ class SpritesheetGenerator {
 		resolutionSuffixFormatMethod = defaultResolutionSuffixFormatMethod,
 		spritesheetNameFromPathMethod = defaultSpritesheetNameFromPathMethod,
 		spritesheetNameFromPathArrayTakeRightNumber = 1,
-		spriteGutter = 2
+		spriteGutter = 2,
+		imageUrlGenerationStrategy = 'absolute',
+		imageUrlGenerationStrategyAbsoluteBaseUrl = '/'
 	}={}) {
 
 		assign(this, {
@@ -74,7 +75,6 @@ class SpritesheetGenerator {
 			spritesheetsOutputPath,
 			stylesheetsOutputPath,
 			processor: isArray(processor) ? processor : [processor],
-			processorUtilsStrategy,
 			processorUtilsPrefix,
 			processorUtilsSuffix,
 			spritesheetPrefix,
@@ -85,7 +85,9 @@ class SpritesheetGenerator {
 			resolutionSuffixFormatMethod,
 			spritesheetNameFromPathMethod,
 			spritesheetNameFromPathArrayTakeRightNumber,
-			spriteGutter
+			spriteGutter,
+			imageUrlGenerationStrategy,
+			imageUrlGenerationStrategyAbsoluteBaseUrl
 		});
 
 		this.eventEmitter = new EventEmitter({
@@ -189,7 +191,14 @@ class SpritesheetGenerator {
 			spritesheet.spriteList = chain(sprites).keyBy(sprite => {
 				return path.basename(sprite, SPRITESHEET_FILE_EXTENSION);
 			}).mapValues((filePath, name) => {
-				return {name, filePath, ratio: spritesheet.ratio};
+				return {
+					name,
+					filePath,
+					fullName: spritesheet.name+'-'+name,
+					ratio: spritesheet.ratio,
+					isMainResolution: spritesheet.isMainResolution,
+					resolution: spritesheet.resolution
+				};
 			}).value();
 
 			isFunction(callback) ? callback(spritesheet.spriteList): null;
@@ -229,16 +238,16 @@ class SpritesheetGenerator {
 			this.imageProcessingLibrary.read(sprite.filePath, (err, spriteImage) => {
 				if (err) {throw err;return;}
 
-				let outputSize = {
+				let outputRect = {
 					width: Math.round(spriteImage.bitmap.width*sprite.ratio),
 					height: Math.round(spriteImage.bitmap.height*sprite.ratio)
 				};
 
 				assign(sprite, {
 					image: spriteImage,
-					w: outputSize.width+(this.spriteGutter*2),
-					h: outputSize.height+(this.spriteGutter*2),
-					outputSize
+					w: outputRect.width+(this.spriteGutter*2),
+					h: outputRect.height+(this.spriteGutter*2),
+					outputRect
 				});
 
 				spriteFileOpenedCount++;
@@ -270,6 +279,12 @@ class SpritesheetGenerator {
 		);
 
 		assign(spritesheet, packSize);
+		spritesheet.outputPath = this.generateSpritsheetOutputPath(spritesheet);
+
+		forEach(spritesheet.spriteList, sprite => {
+			sprite.outputRect.x = sprite.x+this.spriteGutter;
+			sprite.outputRect.y = sprite.y+this.spriteGutter;
+		});
 		
 		isFunction(callback) ? callback() : null;
 	}
@@ -281,14 +296,14 @@ class SpritesheetGenerator {
 			forEach(spritesheet.spriteList, sprite => {
 				if(sprite.fit){
 					if (sprite.ratio !== 1) {
-						sprite.image.quality(100).resize(sprite.outputSize.width, sprite.outputSize.height);
+						sprite.image.quality(100).resize(sprite.outputRect.width, sprite.outputRect.height);
 					}
-					spritesheetImage.composite(sprite.image, sprite.x+this.spriteGutter, sprite.y+this.spriteGutter);
+					spritesheetImage.composite(sprite.image, sprite.outputRect.x, sprite.outputRect.y);
 				}
 
 			});
 
-			let outputPath = this.generateSpritsheetOutputPath(spritesheet);
+			let outputPath = spritesheet.outputPath;
 
 			this.createOutputDir(outputPath, () => {
 				spritesheetImage.write(outputPath, err => {
@@ -340,6 +355,20 @@ class SpritesheetGenerator {
 
 	utilName(util){
 		return this.processorUtilsPrefix+util+this.processorUtilsSuffix;
+	}
+
+	pathSetSep(filePath){
+		return filePath.split(path.sep).join('/');
+	}
+
+	imageUrlRelativeToStylesheetFile(imagePath, fileName, strategy = this.imageUrlGenerationStrategy){
+		if(strategy === 'absolute'){
+			return this.pathSetSep(
+				path.join(this.imageUrlGenerationStrategyAbsoluteBaseUrl, path.relative(this.spritesheetsOutputPath, imagePath))
+			);
+		}
+
+		return './'+this.pathSetSep(path.relative(path.dirname(this.generateStylesheetsOutputPath(fileName)), imagePath));
 	}
 }
 
