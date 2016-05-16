@@ -38,6 +38,10 @@ function defaultResolutionSuffixFormatMethod(resolution, generator) {
 	return '@'+resolution+'x';
 }
 
+function defaultUtilsResolutionSuffixFormatMethod(resolution, generator) {
+	return '_'+resolution+'x';
+}
+
 function defaultSpritesheetNameFromPathMethod (spritesheetFolderPath, generator) {
 	return takeRight(spritesheetFolderPath.split('/'), generator.spritesheetNameFromPathArrayTakeRightNumber).join('--');
 }
@@ -51,14 +55,18 @@ class SpritesheetGenerator {
 		spritesheetsOutputPath = outputPath,
 		stylesheetsOutputPath = outputPath,
 		processor = 'css',
-		processorUtilsPrefix = '',
-		processorUtilsSuffix = '',
+		processorOptions = {},
+		utilsPrefix = '',
+		utilsSuffix = '',
+		stylesheetPrefix = '',
+		stylesheetSuffix = '',
 		spritesheetPrefix = '',
 		spritesheetSuffix = '',
 		retina = true,
 		sourceResolution = retina ? 2 : 1,
 		availableResolutionList = retina ? [2, 1] : [1],
 		mainResolution = 1,
+		utilsResolutionSuffixFormatMethod = defaultUtilsResolutionSuffixFormatMethod,
 		resolutionSuffixFormatMethod = defaultResolutionSuffixFormatMethod,
 		spritesheetNameFromPathMethod = defaultSpritesheetNameFromPathMethod,
 		spritesheetNameFromPathArrayTakeRightNumber = 1,
@@ -75,19 +83,45 @@ class SpritesheetGenerator {
 			spritesheetsOutputPath,
 			stylesheetsOutputPath,
 			processor: isArray(processor) ? processor : [processor],
-			processorUtilsPrefix,
-			processorUtilsSuffix,
+			processorOptions,
+			utilsPrefix,
+			utilsSuffix,
+			stylesheetPrefix,
+			stylesheetSuffix,
 			spritesheetPrefix,
 			spritesheetSuffix,
 			sourceResolution,
 			availableResolutionList,
 			mainResolution,
 			resolutionSuffixFormatMethod,
+			utilsResolutionSuffixFormatMethod,
 			spritesheetNameFromPathMethod,
 			spritesheetNameFromPathArrayTakeRightNumber,
 			spriteGutter,
 			imageUrlGenerationStrategy,
 			imageUrlGenerationStrategyAbsoluteBaseUrl
+		});
+
+		forEach(this.processor, processor => {
+			let processorOptions = this.processorOptions[processor] || {};
+
+			forEach([
+				'imageUrlGenerationStrategy',
+				'imageUrlGenerationStrategyAbsoluteBaseUrl',
+				'utilsResolutionSuffixFormatMethod',
+				'utilsPrefix',
+				'utilsSuffix',
+				['outputPath', 'stylesheetsOutputPath'],
+				['prefix', 'stylesheetPrefix'],
+				['suffix', 'stylesheetSuffix']
+			], defaultOption => {
+				let optionName = (isArray(defaultOption) ? defaultOption[0] : defaultOption);
+				processorOptions[optionName] = isArray(defaultOption) ? 
+				(processorOptions[optionName] || this[defaultOption[1]])
+				: (processorOptions[defaultOption] || this[defaultOption]);
+			});
+
+			this.processorOptions[processor] = processorOptions;
 		});
 
 		this.availableEventList = ['after-run'];
@@ -222,7 +256,6 @@ class SpritesheetGenerator {
 
 	generateSpritesheets(){
 		this.fetchSpritesheetList(spritesheetList => {
-
 			let spritesheetCount = size(spritesheetList);
 			let packedSpritesheetCount = 0;
 
@@ -232,6 +265,7 @@ class SpritesheetGenerator {
 				forEach(spritesheet.versionList, version => {
 					this.generateSpritesheet(version, ()=>{
 						packedVersionCount++;
+
 						if(packedVersionCount === versionCount){
 							packedSpritesheetCount++;
 
@@ -277,6 +311,10 @@ class SpritesheetGenerator {
 
 	generateSpritesheet(spritesheet, afterPackingCallback){
 		this.fetchSpritesheetSpriteList(spritesheet, spriteList => {
+			if (size(spriteList) === 0) {
+				throw new Error('Spritesheet "'+spritesheet.name+'"" at path '+spritesheet.folderPath+' doesn\'t contain any sprite.');
+			}
+
 			this.fetchSpriteListSpriteImage(spriteList, spriteList => {
 				this.packing(spritesheet, afterPackingCallback);
 				this.composeSpritesheet(spritesheet);
@@ -351,8 +389,57 @@ class SpritesheetGenerator {
 
 	generateStylesheet(){
 		forEach(this.processor, processor => {
-			this.writeStylesheetFiles(...(isString(processor) ? processorList[processor] : processor)(this));
+			let options = (isString(processor) ? this.processorOptions[processor] : this.processorOptions);
+			this.writeStylesheetFiles(...(isString(processor) ? processorList[processor] : processor)(this.getProcessorData(options),
+				options,
+			this));
 		});
+	}
+
+	getProcessorData(options){
+		let spritesheetList = [];
+		let sprites = [];
+
+		forEach(this.spritesheetList, spritesheet => {
+			spritesheetList.push(this.getSpritesheetProcessorData(spritesheet));
+		});
+
+		return {spritesheetList, options, generator: this};
+	}
+
+	getSpritesheetProcessorData(spritesheet, options){
+		let utilName = this.utilName('spritesheet-'+spritesheet.name);
+		let mainVersion = null, data = {}, spriteListData = {};
+
+		forEach(spritesheet.versionList, version => {
+			mainVersion = version.isMainResolution ? version : mainVersion;
+			let _resolutionMarker = this.utilsResolutionSuffixFormatMethod(version.resolution);
+			
+			forEach(version.spriteList, sprite => {
+				let spriteData = spriteListData[sprite.fullName] || {};
+				spriteData[_resolutionMarker] = sprite.outputRect;
+				spriteListData[sprite.fullName] = assign({}, spriteData, {
+					spritesheetName: spritesheet.name
+				});
+			});
+
+			data[_resolutionMarker] = {
+				width: version.width,
+				height: version.height,
+				getUrl: function () {
+					return "hello";
+				}
+				//url: this.imageUrlRelativeToStylesheetFile(version.outputPath, 'sprites'+ext)
+			};
+		});
+
+		let mainVersionResolutionMarker = this.utilsResolutionSuffixFormatMethod(mainVersion.resolution);
+		assign(data, data[mainVersionResolutionMarker], {
+			name: utilName,
+			mainResolution: mainVersionResolutionMarker
+		});
+		
+		return data;
 	}
 
 	writeStylesheetFiles(processorName, files, ext){
@@ -368,8 +455,8 @@ class SpritesheetGenerator {
 		});
 	}
 
-	utilName(util){
-		return this.processorUtilsPrefix+util+this.processorUtilsSuffix;
+	utilName(util, options = this){
+		return options.utilsPrefix+util+options.utilsSuffix;
 	}
 
 	pathSetSep(filePath){
@@ -389,7 +476,8 @@ class SpritesheetGenerator {
 
 SpritesheetGenerator.defaultParameters = {
 	resolutionSuffixFormatMethod: defaultResolutionSuffixFormatMethod,
-	spritesheetNameFromPathMethod: defaultSpritesheetNameFromPathMethod
+	spritesheetNameFromPathMethod: defaultSpritesheetNameFromPathMethod,
+	utilsResolutionSuffixFormatMethod: defaultUtilsResolutionSuffixFormatMethod
 };
 
 export default SpritesheetGenerator;

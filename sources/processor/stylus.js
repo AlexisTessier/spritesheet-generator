@@ -4,15 +4,18 @@ import {
 	assign,
 	chain,
 	map,
-	snakeCase
+	snakeCase,
+	kebabCase
 } from 'lodash';
 
 let ext = '.styl';
 
-export default function(gen) {
+export default function(data) {
+	console.log(data.spritesheetList);
+
 	return ['stylus', {
-		tools: toolsFileContent(gen),
-		sprites: spritesFileContent(gen)
+		tools: toolsFileContent(data.generator),
+		sprites: spritesFileContent(data.generator)
 	}, ext];
 };
 
@@ -44,6 +47,10 @@ function getVarName(name, gen){
 
 function getMixinName(name, gen){
 	return gen.utilName(snakeCase(name));
+}
+
+function getPlaceholderName(name, gen){
+	return '$'+gen.utilName(kebabCase(name));
 }
 
 function utilSpritesheetVar(spritesheet, gen){
@@ -103,22 +110,26 @@ function jsonDefinition(name, value){
 let utilSpriteListToolStrategy = {};
 
 utilSpriteListToolStrategy['mixin'] = function utilSpriteListToolStrategyMixin(spriteList, gen) {
-		
+	return chain(spriteList).map((data, name) => {
+		return getMixinName('sprite-'+name, gen)+newLine
+			+tab+
+				getMixinName('spritesheet', gen)+'('+getVarName('spritesheet-'+data.spritesheetName, gen)+')'
+			+newLine+tab+
+				getMixinName('sprite', gen)+'('+getVarName('sprite-'+name, gen)+')'
+	}).join(newLine);
 };
 
 utilSpriteListToolStrategy['placeholder'] = function utilSpriteListToolStrategyPlaceholder(spriteList, gen) {
 	return chain(spriteList).map((data, name) => {
-		return '$'+gen.utilName(name)+newLine
+		return getPlaceholderName('sprite-'+name, gen)+newLine
 			+tab+
-				getMixinName('spritesheet', gen)+'('+getVarName('spritesheet-'+data.spritesheetName, gen)+')'
-			+newLine+tab+
-				getMixinName('spritesheet-part', gen)+'('+getVarName('sprite-'+name, gen)+')'
+				getMixinName('sprite-'+name, gen)+'()'
 	}).join(newLine);
 };
 
 function utilSpriteListTool(spriteList, gen){
-	return map(['mixin', 'placeholder'], strategy => {
+	return newLine+map(['mixin', 'placeholder'], strategy => {
 		return utilSpriteListToolStrategy[strategy](spriteList, gen);
-	}).join(newLine);
+	}).join(newLine+newLine);
 };
 
