@@ -1,7 +1,7 @@
 TO DO
 =====
 
-+ finish stylus process
-+ processor options
-+ refactor processor
++ stylus processor tools generation
++ stylus separate stylesheets
 + outputPath may be functions
++ after run event

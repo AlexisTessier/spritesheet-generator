@@ -9,7 +9,13 @@ module.exports = function (afterRunCallback) {
 	var gen = new SpritesheetGenerator({
 		inputPath : path.join(__dirname, 'sources'),
 		outputPath : path.join(__dirname, 'generated-spritesheets'),
-		processor : 'stylus'
+		processor : 'stylus',
+		processorOptions: {
+			stylus: {
+				imageUrlGenerationStrategy: 'relative',
+				imageUrlGenerationStrategyAbsoluteBaseUrl: '/un-test/'
+			}
+		}
 	}).inject(require('../../injection/spritesheet-generator'));
 
 	/*@README hide*/

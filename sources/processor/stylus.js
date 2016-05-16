@@ -5,98 +5,31 @@ import {
 	chain,
 	map,
 	snakeCase,
-	kebabCase
+	kebabCase,
+	cloneDeep
 } from 'lodash';
 
 let ext = '.styl';
 
 export default function(data) {
-	console.log(data.spritesheetList);
-
 	return ['stylus', {
-		tools: toolsFileContent(data.generator),
-		sprites: spritesFileContent(data.generator)
-	}, ext];
+		tools: toolsFileContent(data),
+		sprites: spritesFileContent(data)
+	}, ext, data.options];
 };
 
 let newLine = '\n', tab = '\t';
 
-function toolsFileContent(gen) {
-	//console.log(gen);
-	return '';
-};
-
-function spritesFileContent(gen) {
-	return chain(gen.spritesheetList).map(spritesheet => {
-		let spritesheetVar = utilSpritesheetVar(spritesheet, gen);
-		
-		return newLine+spritesheetVar.string
-		+newLine
-		+utilSpriteListTool(spritesheetVar.raw.spriteListData, gen);
-
-	}).value().join(newLine);
-};
-
-function resolutionMarker(resolution){
-	return '_'+resolution+'x';
+function getVarName(name){
+	return camelCase(name);
 }
 
-function getVarName(name, gen){
-	return gen.utilName(camelCase(name));
+function getMixinName(name){
+	return snakeCase(name);
 }
 
-function getMixinName(name, gen){
-	return gen.utilName(snakeCase(name));
-}
-
-function getPlaceholderName(name, gen){
-	return '$'+gen.utilName(kebabCase(name));
-}
-
-function utilSpritesheetVar(spritesheet, gen){
-	let varName = getVarName('spritesheet-'+spritesheet.name, gen);
-	let mainVersion = null, varValue = {}, spriteListData = {};
-
-	forEach(spritesheet.versionList, version => {
-		mainVersion = version.isMainResolution ? version : mainVersion;
-		let _resolutionMarker = resolutionMarker(version.resolution);
-		
-		forEach(version.spriteList, sprite => {
-			let spriteData = spriteListData[sprite.fullName] || {};
-			spriteData[_resolutionMarker] = sprite.outputRect;
-			spriteListData[sprite.fullName] = assign({}, spriteData, {
-				spritesheetName: spritesheet.name
-			});
-		});
-
-		varValue[_resolutionMarker] = {
-			width: version.width,
-			height: version.height,
-			url: gen.imageUrlRelativeToStylesheetFile(version.outputPath, 'sprites'+ext)
-		};
-	});
-
-	let mainVersionResolutionMarker = resolutionMarker(mainVersion.resolution);
-	assign(varValue, varValue[mainVersionResolutionMarker], {
-		mainResolution: mainVersionResolutionMarker
-	});
-
-	return {
-		raw: {
-			varValue,
-			spriteListData
-		},
-		string: (jsonDefinition(varName, varValue)+newLine)+(
-			chain(spriteListData).map((spriteData, name) => {
-				let dataVarName = getVarName('sprite-'+name, gen);
-				assign(spriteData, spriteData[mainVersionResolutionMarker], {
-					name,
-					mainResolution: mainVersionResolutionMarker
-				});
-				return jsonDefinition(dataVarName, spriteData);
-			}).value().join(newLine)
-		)
-	};
+function getPlaceholderName(name){
+	return '$'+kebabCase(name);
 }
 
 function variableDefinition(name, value){
@@ -107,29 +40,97 @@ function jsonDefinition(name, value){
 	return variableDefinition(name, JSON.stringify(value));
 }
 
-let utilSpriteListToolStrategy = {};
+function mixinCall(name, args = ''){
+	return name+'('+args+')';
+}
 
-utilSpriteListToolStrategy['mixin'] = function utilSpriteListToolStrategyMixin(spriteList, gen) {
-	return chain(spriteList).map((data, name) => {
-		return getMixinName('sprite-'+name, gen)+newLine
-			+tab+
-				getMixinName('spritesheet', gen)+'('+getVarName('spritesheet-'+data.spritesheetName, gen)+')'
-			+newLine+tab+
-				getMixinName('sprite', gen)+'('+getVarName('sprite-'+name, gen)+')'
-	}).join(newLine);
+function toolsFileContent(data) {
+	//console.log(gen);
+	return '';
 };
 
-utilSpriteListToolStrategy['placeholder'] = function utilSpriteListToolStrategyPlaceholder(spriteList, gen) {
-	return chain(spriteList).map((data, name) => {
-		return getPlaceholderName('sprite-'+name, gen)+newLine
-			+tab+
-				getMixinName('sprite-'+name, gen)+'()'
-	}).join(newLine);
+function spritesFileContent(data) {
+	return newLine+chain(data.spritesheetList).map(spritesheet => {
+		return spritesheetContent(spritesheet, data);
+	}).value().join(newLine);
 };
 
-function utilSpriteListTool(spriteList, gen){
+function spritesheetContent(spritesheet, data) {
+	return spritesheetContentVar(spritesheet, data)
+		+newLine
+		+spritesheetContentUtils(spritesheet, data)
+		+newLine;
+};
+
+function getSpritesheetContentRawVarValue(spritesheet){
+	let rawVarValue = cloneDeep(spritesheet);
+
+	rawVarValue.url = rawVarValue.getUrl('sprites'+ext);
+	delete rawVarValue.spriteList;
+	delete rawVarValue.getUrl;
+
+	return rawVarValue;
+}
+
+function spritesheetContentVar(spritesheet, data){
+	let spritesheetVarName = getVarName(spritesheet.name);
+
+	let spritesheetRawVarValue = getSpritesheetContentRawVarValue(spritesheet);
+	forEach(spritesheetRawVarValue.resolutionList, resolution => {
+		spritesheetRawVarValue[resolution] = getSpritesheetContentRawVarValue(spritesheetRawVarValue[resolution]);
+	});
+
+	return jsonDefinition(spritesheetVarName, spritesheetRawVarValue)+newLine+chain(spritesheet.spriteList).map(sprite => {
+		let spriteVarName = getVarName(sprite.name);
+		let spriteRawValue = cloneDeep(sprite);
+
+		forEach(spritesheet.resolutionList, resolution => {
+			spriteRawValue[resolution] = spritesheet[resolution].spriteList[sprite.name];
+		});
+
+		return jsonDefinition(spriteVarName, spriteRawValue);
+	}).value().join(newLine);
+};
+
+let spritesheetContentUtilsStrategy = {};
+
+spritesheetContentUtilsStrategy['mixin'] = function utilSpriteListToolStrategyMixin(spritesheet, data) {
+	let spritesheetMixinName = getMixinName(spritesheet.name);
+	return spritesheetMixinName+'(fullSpritesheet = true)'
+		+newLine
+		+tab
+			+mixinCall(getMixinName(data.generator.utilName('spritesheet', data.options)), 
+				getVarName(spritesheet.name)+', fullSpritesheet'
+			)
+		+newLine
+		+chain(spritesheet.spriteList).map(sprite => {
+			return getMixinName(sprite.name)+'()'
+				+newLine
+				+tab
+					+mixinCall(spritesheetMixinName, 'fullSpritesheet: false')
+				+newLine+tab
+					+mixinCall(getMixinName(data.generator.utilName('sprite', data.options)), 
+						getVarName(sprite.name)
+					);
+		}).value().join(newLine);
+};
+
+spritesheetContentUtilsStrategy['placeholder'] = function utilSpriteListToolStrategyPlaceholder(spritesheet, data) {
+	return getPlaceholderName(spritesheet.name)
+		+newLine
+		+tab
+			+mixinCall(getMixinName(spritesheet.name))
+		+newLine
+		+chain(spritesheet.spriteList).map(sprite => {
+			return getPlaceholderName(sprite.name)
+				+newLine
+				+tab
+					+mixinCall(getMixinName(sprite.name))
+		}).join(newLine);
+};
+
+function spritesheetContentUtils(spritesheet, data){
 	return newLine+map(['mixin', 'placeholder'], strategy => {
-		return utilSpriteListToolStrategy[strategy](spriteList, gen);
+		return spritesheetContentUtilsStrategy[strategy](spritesheet, data);
 	}).join(newLine+newLine);
 };
-

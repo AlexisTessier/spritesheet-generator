@@ -76,6 +76,7 @@ class SpritesheetGenerator {
 	}={}) {
 
 		assign(this, {
+			isGenerator: true,
 			inputPath,
 			inputSpritesheetPath,
 			inputSpritePath,
@@ -102,6 +103,7 @@ class SpritesheetGenerator {
 			imageUrlGenerationStrategyAbsoluteBaseUrl
 		});
 
+		//Set processor options for each used processor
 		forEach(this.processor, processor => {
 			let processorOptions = this.processorOptions[processor] || {};
 
@@ -111,6 +113,9 @@ class SpritesheetGenerator {
 				'utilsResolutionSuffixFormatMethod',
 				'utilsPrefix',
 				'utilsSuffix',
+				'stylesheetsOutputPath',
+				'stylesheetPrefix',
+				'stylesheetSuffix',
 				['outputPath', 'stylesheetsOutputPath'],
 				['prefix', 'stylesheetPrefix'],
 				['suffix', 'stylesheetSuffix']
@@ -125,7 +130,7 @@ class SpritesheetGenerator {
 		});
 
 		this.availableEventList = ['after-run'];
-		this.eventEmitter = eventEmitterFactory({});//new EventEmitter();
+		this.eventEmitter = eventEmitterFactory({});
 
 		this.spritesheetList = [];
 		this.running = false;
@@ -383,68 +388,76 @@ class SpritesheetGenerator {
 		));
 	}
 
-	generateStylesheetsOutputPath(stylesheetName){
-		return path.join(this.stylesheetsOutputPath, stylesheetName);
+	generateStylesheetsOutputPath(stylesheetName, options = this){
+		return path.join(options.stylesheetsOutputPath, stylesheetName);
 	}
 
 	generateStylesheet(){
 		forEach(this.processor, processor => {
 			let options = (isString(processor) ? this.processorOptions[processor] : this.processorOptions);
 			this.writeStylesheetFiles(...(isString(processor) ? processorList[processor] : processor)(this.getProcessorData(options),
-				options,
-			this));
+				options, this));
 		});
 	}
 
-	getProcessorData(options){
+	getProcessorData(options = this){
 		let spritesheetList = [];
 		let sprites = [];
 
 		forEach(this.spritesheetList, spritesheet => {
-			spritesheetList.push(this.getSpritesheetProcessorData(spritesheet));
+			spritesheetList.push(this.getSpritesheetProcessorData(spritesheet, options));
 		});
 
 		return {spritesheetList, options, generator: this};
 	}
 
-	getSpritesheetProcessorData(spritesheet, options){
-		let utilName = this.utilName('spritesheet-'+spritesheet.name);
-		let mainVersion = null, data = {}, spriteListData = {};
+	getSpritesheetProcessorData(spritesheet, options = this){
+		let utilName = this.utilName('spritesheet-'+spritesheet.name, options);
+		let mainVersion = null, data = {};
+		let resolutionSuffixList = [];
 
 		forEach(spritesheet.versionList, version => {
 			mainVersion = version.isMainResolution ? version : mainVersion;
-			let _resolutionMarker = this.utilsResolutionSuffixFormatMethod(version.resolution);
-			
+			let resolutionSuffix = this.utilsResolutionSuffixFormatMethod(version.resolution);
+			resolutionSuffixList.push(resolutionSuffix);
+
+			let spriteList = {};
 			forEach(version.spriteList, sprite => {
-				let spriteData = spriteListData[sprite.fullName] || {};
-				spriteData[_resolutionMarker] = sprite.outputRect;
-				spriteListData[sprite.fullName] = assign({}, spriteData, {
-					spritesheetName: spritesheet.name
-				});
+				let name = this.utilName('sprite-'+sprite.fullName, options);
+
+				spriteList[name] = assign({
+					name,
+					spritesheetName: utilName,
+					resolution: resolutionSuffix
+				}, sprite.outputRect);
 			});
 
-			data[_resolutionMarker] = {
+			data[resolutionSuffix] = {
 				width: version.width,
 				height: version.height,
-				getUrl: function () {
-					return "hello";
-				}
-				//url: this.imageUrlRelativeToStylesheetFile(version.outputPath, 'sprites'+ext)
+				getUrl: (fileName) => {
+					return this.imageUrlRelativeToStylesheetFile(version.outputPath, fileName, options);
+				},
+				isMainResolution: version.isMainResolution,
+				spriteList
 			};
 		});
 
-		let mainVersionResolutionMarker = this.utilsResolutionSuffixFormatMethod(mainVersion.resolution);
-		assign(data, data[mainVersionResolutionMarker], {
+		let mainVersionResolutionSuffix = this.utilsResolutionSuffixFormatMethod(mainVersion.resolution);
+		assign(data, data[mainVersionResolutionSuffix], {
 			name: utilName,
-			mainResolution: mainVersionResolutionMarker
+			mainResolution: mainVersionResolutionSuffix,
+			resolutionList: resolutionSuffixList
 		});
+
+		delete data.isMainResolution;
 		
 		return data;
 	}
 
-	writeStylesheetFiles(processorName, files, ext){
+	writeStylesheetFiles(processorName, files, ext, options = this){
 		forEach(files, (fileContent, fileName) => {
-			let outputPath = this.generateStylesheetsOutputPath(fileName)+ext;
+			let outputPath = this.generateStylesheetsOutputPath(fileName, options)+ext;
 			this.createOutputDir(outputPath, () => {
 				fs.writeFile(outputPath, fileContent, err => {
 					if (err){throw err;return;}
@@ -463,14 +476,14 @@ class SpritesheetGenerator {
 		return filePath.split(path.sep).join('/');
 	}
 
-	imageUrlRelativeToStylesheetFile(imagePath, fileName, strategy = this.imageUrlGenerationStrategy){
-		if(strategy === 'absolute'){
+	imageUrlRelativeToStylesheetFile(imagePath, fileName, options = this){
+		if(options.imageUrlGenerationStrategy === 'absolute'){
 			return this.pathSetSep(
-				path.join(this.imageUrlGenerationStrategyAbsoluteBaseUrl, path.relative(this.spritesheetsOutputPath, imagePath))
+				path.join(options.imageUrlGenerationStrategyAbsoluteBaseUrl, path.relative(this.spritesheetsOutputPath, imagePath))
 			);
 		}
 
-		return './'+this.pathSetSep(path.relative(path.dirname(this.generateStylesheetsOutputPath(fileName)), imagePath));
+		return './'+this.pathSetSep(path.relative(path.dirname(this.generateStylesheetsOutputPath(fileName, options)), imagePath));
 	}
 }
 
