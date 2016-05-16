@@ -1,6 +1,6 @@
 {
   "name": "@alexistessier/spritesheet-generator",
-  "version": "0.0.14",
+  "version": "0.0.15",
   "description": "A javascript spritesheet generator",
   "main": "index.js",
   "scripts": {
@@ -30,6 +30,7 @@
   },
   "dependencies": {
     "@alexistessier/report": "^1.0.4",
+    "event-emitter": "^0.3.4",
     "glob": "^7.0.3",
     "jakes-gordon-growing-packer": "^0.1.0",
     "jimp": "^0.2.24",

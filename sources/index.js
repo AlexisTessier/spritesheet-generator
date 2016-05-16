@@ -17,7 +17,7 @@ import {
 
 import mkdirp from 'mkdirp';
 
-import EventEmitter from './event-emitter';
+import eventEmitterFactory from 'event-emitter';
 
 import glob from 'glob';
 
@@ -90,9 +90,8 @@ class SpritesheetGenerator {
 			imageUrlGenerationStrategyAbsoluteBaseUrl
 		});
 
-		this.eventEmitter = new EventEmitter({
-			eventList : ['after-run']
-		});
+		this.availableEventList = ['after-run'];
+		this.eventEmitter = eventEmitterFactory({});//new EventEmitter();
 
 		this.spritesheetList = [];
 		this.running = false;
@@ -125,9 +124,25 @@ class SpritesheetGenerator {
 		return this;
 	}
 
-	report(...args){
-		this.reporter.report(...args);
+	/*--------------------------*/
+	/*-- Component interfaces --*/
+	/*--------------------------*/
+
+	report(){
+		return this.reporter.report(...arguments);
 	}
+
+	on(){
+		return this.eventEmitter.on(...arguments);
+	}
+
+	off(){
+		return this.eventEmitter.off(...arguments);
+	}
+
+	/*--------------------------*/
+	/*--------------------------*/
+	/*--------------------------*/
 
 	run(){
 		if (this.running) {
@@ -138,7 +153,7 @@ class SpritesheetGenerator {
 		this.generateSpritesheets();
 		this.running = true;
 
-		//this.emit('after-run');
+		//this.eventEmitter.emit('after-run');
 	}
 
 	spritesheetInputFolderPath(spritesheetName){
@@ -376,9 +391,5 @@ SpritesheetGenerator.defaultParameters = {
 	resolutionSuffixFormatMethod: defaultResolutionSuffixFormatMethod,
 	spritesheetNameFromPathMethod: defaultSpritesheetNameFromPathMethod
 };
-
-EventEmitter.attachEventEmitterInterface(SpritesheetGenerator);
-//attachComponentInterface(SpritesheetGenerator, 'eventEmitter', 'on', 'off', 'emit');
-//attachComponentInterface(SpritesheetGenerator, 'reporter', 'report');
 
 export default SpritesheetGenerator;
