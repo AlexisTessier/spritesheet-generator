@@ -129,14 +129,27 @@ class SpritesheetGenerator {
 			this.processorOptions[processor] = processorOptions;
 		});
 
-		this.availableEventList = ['after-run'];
+		this.availableEventList = ['file written', 'after-run'];
 		this.eventEmitter = eventEmitterFactory({});
 
 		this.spritesheetList = [];
 		this.running = false;
+		this.fileToWriteCount = 0;
+		this.firstSpritesheetWritten = false;
+		this.firstStylesheetWritten = false;
 
 		this.on('after-run', () => {
+			this.fileToWriteCount = 0;
 			this.running = false;
+			this.firstSpritesheetWritten = false;
+			this.firstStylesheetWritten = false;
+		});
+
+		this.on('file written', (outputPath, content) => {
+			this.fileToWriteCount--;
+			if(this.fileToWriteCount <= 0 && this.firstStylesheetWritten && this.firstSpritesheetWritten){
+				this.eventEmitter.emit('after-run');
+			}
 		});
 	}
 
@@ -191,8 +204,6 @@ class SpritesheetGenerator {
 
 		this.generateSpritesheets();
 		this.running = true;
-
-		//this.eventEmitter.emit('after-run');
 	}
 
 	spritesheetInputFolderPath(spritesheetName){
@@ -348,6 +359,8 @@ class SpritesheetGenerator {
 	}
 
 	composeSpritesheet(spritesheet){
+		this.fileToWriteCount++;
+
 		let spritesheetImage = this.imageProcessingLibrary.createImage(spritesheet.width, spritesheet.height, (err, spritesheetImage) => {
 			if (err){throw err;return;}
 
@@ -368,6 +381,8 @@ class SpritesheetGenerator {
 					if (err){throw err;return;}
 					
 					this.report('notice', 'Spritesheet successfully generated at '+outputPath);
+					this.firstSpritesheetWritten = true;
+					this.eventEmitter.emit('file written', outputPath, spritesheetImage);
 				});
 			});
 		});
@@ -462,6 +477,7 @@ class SpritesheetGenerator {
 	}
 
 	writeStylesheetFiles(processorName, files, ext, options = this){
+		this.fileToWriteCount += size(files);
 		forEach(files, (fileContent, fileName) => {
 			let outputPath = this.generateStylesheetsOutputPath(fileName, options)+ext;
 			this.createOutputDir(outputPath, () => {
@@ -469,6 +485,8 @@ class SpritesheetGenerator {
 					if (err){throw err;return;}
 
 					this.report('notice', 'Processor '+processorName+' successfully generate '+outputPath);
+					this.firstStylesheetWritten = true;
+					this.eventEmitter.emit('file written', outputPath, fileContent);
 				}); 
 			})
 		});
