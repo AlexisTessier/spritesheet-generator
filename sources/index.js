@@ -416,12 +416,12 @@ class SpritesheetGenerator {
 	getSpritesheetProcessorData(spritesheet, options = this){
 		let utilName = this.utilName('spritesheet-'+spritesheet.name, options);
 		let mainVersion = null, data = {};
-		let resolutionSuffixList = [];
+		let resolutionSuffixList = {};
 
 		forEach(spritesheet.versionList, version => {
 			mainVersion = version.isMainResolution ? version : mainVersion;
 			let resolutionSuffix = this.utilsResolutionSuffixFormatMethod(version.resolution);
-			resolutionSuffixList.push(resolutionSuffix);
+			resolutionSuffixList[resolutionSuffix] = resolutionSuffix;
 
 			let spriteList = {};
 			forEach(version.spriteList, sprite => {
@@ -430,7 +430,9 @@ class SpritesheetGenerator {
 				spriteList[name] = assign({
 					name,
 					spritesheetName: utilName,
-					resolution: resolutionSuffix
+					resolution: resolutionSuffix,
+					resolutionValue: version.resolution,
+					minDpi: this.getMinDpiForResolution(version.resolution)
 				}, sprite.outputRect);
 			});
 
@@ -441,6 +443,8 @@ class SpritesheetGenerator {
 					return this.imageUrlRelativeToStylesheetFile(version.outputPath, fileName, spritesheet, options);
 				},
 				isMainResolution: version.isMainResolution,
+				resolutionValue: version.resolution,
+				minDpi: this.getMinDpiForResolution(version.resolution),
 				spriteList
 			};
 		});

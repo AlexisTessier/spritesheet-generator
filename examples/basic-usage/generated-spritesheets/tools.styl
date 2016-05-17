@@ -1,3 +1,16 @@
 spritesheet(spritesheetDescriptor, fullSpritesheet = false)
-	h
-h
+	baseMinDpi = 96
+	display: block
+	background-repeat: no-repeat
+	background-size: (spritesheetDescriptor.width)px (spritesheetDescriptor.height)px
+	if fullSpritesheet
+		width: (spritesheetDescriptor.width)px
+		height: (spritesheetDescriptor.height)px
+	backgroundImageUrl = spritesheetDescriptor.url
+	background-image: url(backgroundImageUrl)
+	for resolution in spritesheetDescriptor.resolutionList
+		currentResolution = spritesheetDescriptor[resolution]
+		if !currentResolution.isMainResolution
+			@media (-webkit-min-device-pixel-ratio: (currentResolution.resolutionValue)), (min-resolution: (currentResolution.minDpi)dpi)
+				resolutionBackgroundImageUrl = currentResolution.url
+				background-image: url(resolutionBackgroundImageUrl)

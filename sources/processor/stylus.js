@@ -52,10 +52,23 @@ function toolsFileContentSpritesheetMixin(data) {
 	let gen = data.generator;
 
 	return getMixinName(gen.utilName('spritesheet', data.options))+'(spritesheetDescriptor, fullSpritesheet = false)'
-		+newLine+tab
-		+chain(gen.resolutionList).map(resolution => {
-			return 'h';
-		}).value().join(newLine);
+		+newLine+tab+'baseMinDpi = '+gen.getMinDpiForResolution(1)
+		+newLine+tab+'display: block'
+		+newLine+tab+'background-repeat: no-repeat'
+		+newLine+tab+'background-size: (spritesheetDescriptor.width)px (spritesheetDescriptor.height)px'
+		+newLine+tab+'if fullSpritesheet'
+		+newLine+tab+tab+'width: (spritesheetDescriptor.width)px'
+		+newLine+tab+tab+'height: (spritesheetDescriptor.height)px'
+		+newLine+tab+'backgroundImageUrl = spritesheetDescriptor.url'
+		+newLine+tab+'background-image: url(backgroundImageUrl)'
+		+newLine+tab+'for resolution in spritesheetDescriptor.resolutionList'
+		+newLine+tab+tab+'currentResolution = spritesheetDescriptor[resolution]'
+		+newLine+tab+tab+'if !currentResolution.isMainResolution'
+		+newLine+tab+tab+tab+'@media '
+		+'(-webkit-min-device-pixel-ratio: (currentResolution.resolutionValue)), '
+		+'(min-resolution: (currentResolution.minDpi)dpi)'
+		+newLine+tab+tab+tab+tab+'resolutionBackgroundImageUrl = currentResolution.url'
+		+newLine+tab+tab+tab+tab+'background-image: url(resolutionBackgroundImageUrl)'
 	;
 }
 
