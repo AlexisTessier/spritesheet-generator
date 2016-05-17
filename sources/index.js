@@ -64,7 +64,7 @@ class SpritesheetGenerator {
 		spritesheetSuffix = '',
 		retina = true,
 		sourceResolution = retina ? 2 : 1,
-		availableResolutionList = retina ? [2, 1] : [1],
+		resolutionList = retina ? [2, 1] : [1],
 		mainResolution = 1,
 		utilsResolutionSuffixFormatMethod = defaultUtilsResolutionSuffixFormatMethod,
 		resolutionSuffixFormatMethod = defaultResolutionSuffixFormatMethod,
@@ -92,7 +92,7 @@ class SpritesheetGenerator {
 			spritesheetPrefix,
 			spritesheetSuffix,
 			sourceResolution,
-			availableResolutionList,
+			resolutionList,
 			mainResolution,
 			resolutionSuffixFormatMethod,
 			utilsResolutionSuffixFormatMethod,
@@ -218,7 +218,7 @@ class SpritesheetGenerator {
 			}).mapValues((folderPath, name) => {
 				return {name, folderPath};
 			}).forEach((spritesheet, name) => {
-				spritesheet.versionList = map(this.availableResolutionList, resolution => {
+				spritesheet.versionList = map(this.resolutionList, resolution => {
 					return{
 						name,
 						resolution,
@@ -370,7 +370,7 @@ class SpritesheetGenerator {
 					this.report('notice', 'Spritesheet successfully generated at '+outputPath);
 				});
 			});
-		});	
+		});
 	}
 
 	createOutputDir(outputPath, callback){
@@ -381,7 +381,8 @@ class SpritesheetGenerator {
 	}
 
 	generateSpritsheetOutputPath(spritesheet){
-		return path.join(this.spritesheetsOutputPath, (
+		let outputPath = isFunction(this.spritesheetsOutputPath) ? this.spritesheetsOutputPath(spritesheet, this) : this.spritesheetsOutputPath;
+		return path.join(outputPath, (
 			this.spritesheetPrefix+spritesheet.name+this.spritesheetSuffix+(
 				spritesheet.isMainResolution ? '' : spritesheet.resolutionSuffix
 			)+SPRITESHEET_FILE_EXTENSION
@@ -389,7 +390,8 @@ class SpritesheetGenerator {
 	}
 
 	generateStylesheetsOutputPath(stylesheetName, options = this){
-		return path.join(options.stylesheetsOutputPath, stylesheetName);
+		let outputPath = isFunction(options.stylesheetsOutputPath) ? options.stylesheetsOutputPath(stylesheetName, options, this) : options.stylesheetsOutputPath;
+		return path.join(outputPath, stylesheetName);
 	}
 
 	generateStylesheet(){
@@ -436,7 +438,7 @@ class SpritesheetGenerator {
 				width: version.width,
 				height: version.height,
 				getUrl: (fileName) => {
-					return this.imageUrlRelativeToStylesheetFile(version.outputPath, fileName, options);
+					return this.imageUrlRelativeToStylesheetFile(version.outputPath, fileName, spritesheet, options);
 				},
 				isMainResolution: version.isMainResolution,
 				spriteList
@@ -476,10 +478,10 @@ class SpritesheetGenerator {
 		return filePath.split(path.sep).join('/');
 	}
 
-	imageUrlRelativeToStylesheetFile(imagePath, fileName, options = this){
+	imageUrlRelativeToStylesheetFile(imagePath, fileName, spritesheet, options = this){
 		if(options.imageUrlGenerationStrategy === 'absolute'){
 			return this.pathSetSep(
-				path.join(options.imageUrlGenerationStrategyAbsoluteBaseUrl, path.relative(this.spritesheetsOutputPath, imagePath))
+				path.join(options.imageUrlGenerationStrategyAbsoluteBaseUrl, path.relative(this.generateSpritsheetOutputPath(spritesheet), imagePath))
 			);
 		}
 

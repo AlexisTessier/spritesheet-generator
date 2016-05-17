@@ -13,7 +13,7 @@ module.exports = function (afterRunCallback) {
 		processorOptions: {
 			stylus: {
 				imageUrlGenerationStrategy: 'relative',
-				imageUrlGenerationStrategyAbsoluteBaseUrl: '/un-test/'
+				imageUrlGenerationStrategyAbsoluteBaseUrl: '/img/'
 			}
 		}
 	}).inject(require('../../injection/spritesheet-generator'));

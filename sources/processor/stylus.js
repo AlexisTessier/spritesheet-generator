@@ -11,7 +11,7 @@ import {
 
 let ext = '.styl';
 
-export default function(data) {
+export default function stylusProcessor(data) {
 	return ['stylus', {
 		tools: toolsFileContent(data),
 		sprites: spritesFileContent(data)
@@ -45,9 +45,19 @@ function mixinCall(name, args = ''){
 }
 
 function toolsFileContent(data) {
-	//console.log(gen);
-	return '';
+	return toolsFileContentSpritesheetMixin(data);
 };
+
+function toolsFileContentSpritesheetMixin(data) {
+	let gen = data.generator;
+
+	return getMixinName(gen.utilName('spritesheet', data.options))+'(spritesheetDescriptor, fullSpritesheet = false)'
+		+newLine+tab
+		+chain(gen.resolutionList).map(resolution => {
+			return 'h';
+		}).value().join(newLine);
+	;
+}
 
 function spritesFileContent(data) {
 	return newLine+chain(data.spritesheetList).map(spritesheet => {
