@@ -9,13 +9,21 @@ import {
 	cloneDeep
 } from 'lodash';
 
+import path from 'path';
+
 let ext = '.styl';
 
 export default function stylusProcessor(data) {
-	return ['stylus', {
+	let spritesFilesList = {};
+
+	forEach(data.spritesheetList, spritesheet => {
+		spritesFilesList[spritesheet.name] = spritesheetContent(spritesheet, data);
+	});
+
+	return ['stylus', assign({
 		tools: toolsFileContent(data),
-		sprites: spritesFileContent(data)
-	}, ext, data.options];
+		sprites: spritesFileContent(data, spritesFilesList)
+	}, spritesFilesList), ext, data.options];
 };
 
 let newLine = '\n', tab = '\t';
@@ -44,15 +52,37 @@ function mixinCall(name, args = ''){
 	return name+'('+args+')';
 }
 
+function requireFile(name){
+	return '@require "'+name+'"';
+}
+
+function requireFromTo(fromSpritesheet, toSpritesheet, data){
+	return requireFile(
+		'./'+path.relative(
+			path.dirname(data.generator.generateStylesheetsOutputPath(fromSpritesheet.name+ext, data.options)),
+			data.generator.generateStylesheetsOutputPath(toSpritesheet.name+ext, data.options)
+		)
+	);
+}
+
+function requireToolsFrom(spritesheet, data){
+	return requireFile(
+		'./'+path.relative(
+			path.dirname(data.generator.generateStylesheetsOutputPath(spritesheet.name+ext, data.options)),
+			data.generator.generateStylesheetsOutputPath('tools'+ext, data.options)
+		)
+	);
+}
+
 function toolsFileContent(data) {
-	return toolsFileContentSpritesheetMixin(data);
+	return toolsFileContentSpritesheetMixin(data)
+		+newLine+newLine
+		+toolsFileContentSpriteMixin(data);
 };
 
 function toolsFileContentSpritesheetMixin(data) {
-	let gen = data.generator;
-
-	return getMixinName(gen.utilName('spritesheet', data.options))+'(spritesheetDescriptor, fullSpritesheet = false)'
-		+newLine+tab+'baseMinDpi = '+gen.getMinDpiForResolution(1)
+	return getMixinName(data.generator.utilName('spritesheet', data.options))+'(spritesheetDescriptor, fullSpritesheet = false)'
+		+newLine+tab+'baseMinDpi = '+data.generator.getMinDpiForResolution(1)
 		+newLine+tab+'display: block'
 		+newLine+tab+'background-repeat: no-repeat'
 		+newLine+tab+'background-size: (spritesheetDescriptor.width)px (spritesheetDescriptor.height)px'
@@ -72,14 +102,24 @@ function toolsFileContentSpritesheetMixin(data) {
 	;
 }
 
+function toolsFileContentSpriteMixin(data){
+	return getMixinName(data.generator.utilName('sprite', data.options))+'(spriteDescriptor)'
+		+newLine+tab+'width: (spriteDescriptor.width)px'
+		+newLine+tab+'height: (spriteDescriptor.height)px'
+		+newLine+tab+'background-position: (-(spriteDescriptor.x)px) (-(spriteDescriptor.y)px)'
+	;
+}
+
 function spritesFileContent(data) {
-	return newLine+chain(data.spritesheetList).map(spritesheet => {
-		return spritesheetContent(spritesheet, data);
+	return chain(data.spritesheetList).map(spritesheet => {
+		return requireFromTo({name:'sprites'}, spritesheet, data);
 	}).value().join(newLine);
 };
 
 function spritesheetContent(spritesheet, data) {
-	return spritesheetContentVar(spritesheet, data)
+	return requireToolsFrom(spritesheet, data)
+		+newLine+newLine
+		+spritesheetContentVar(spritesheet, data)
 		+newLine
 		+spritesheetContentUtils(spritesheet, data)
 		+newLine;

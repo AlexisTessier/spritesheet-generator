@@ -395,9 +395,12 @@ class SpritesheetGenerator {
 		});
 	}
 
+	generateSpritsheetOutputDirectoryPath(spritesheet){
+		return isFunction(this.spritesheetsOutputPath) ? this.spritesheetsOutputPath(spritesheet, this) : this.spritesheetsOutputPath;
+	}
+
 	generateSpritsheetOutputPath(spritesheet){
-		let outputPath = isFunction(this.spritesheetsOutputPath) ? this.spritesheetsOutputPath(spritesheet, this) : this.spritesheetsOutputPath;
-		return path.join(outputPath, (
+		return path.join(this.generateSpritsheetOutputDirectoryPath(spritesheet), (
 			this.spritesheetPrefix+spritesheet.name+this.spritesheetSuffix+(
 				spritesheet.isMainResolution ? '' : spritesheet.resolutionSuffix
 			)+SPRITESHEET_FILE_EXTENSION
@@ -455,7 +458,7 @@ class SpritesheetGenerator {
 				width: version.width,
 				height: version.height,
 				getUrl: (fileName) => {
-					return this.imageUrlRelativeToStylesheetFile(version.outputPath, fileName, spritesheet, options);
+					return this.imageUrlRelativeToStylesheetFile(version.outputPath, fileName, version, options);
 				},
 				isMainResolution: version.isMainResolution,
 				resolutionValue: version.resolution,
@@ -503,7 +506,7 @@ class SpritesheetGenerator {
 	imageUrlRelativeToStylesheetFile(imagePath, fileName, spritesheet, options = this){
 		if(options.imageUrlGenerationStrategy === 'absolute'){
 			return this.pathSetSep(
-				path.join(options.imageUrlGenerationStrategyAbsoluteBaseUrl, path.relative(this.generateSpritsheetOutputPath(spritesheet), imagePath))
+				path.join(options.imageUrlGenerationStrategyAbsoluteBaseUrl, path.relative(this.generateSpritsheetOutputDirectoryPath(spritesheet), imagePath))
 			);
 		}
 

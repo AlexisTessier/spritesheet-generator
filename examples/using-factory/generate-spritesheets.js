@@ -2,8 +2,6 @@ var spritesheetGenerator = require('../../factory');
 
 module.exports = function (afterRunCallback) {
 
-	/*@README example*/
-
 	var path = require('path');
 
 	var gen = spritesheetGenerator({
@@ -12,11 +10,7 @@ module.exports = function (afterRunCallback) {
 		processor : 'stylus'
 	});
 
-	/*@README hide*/
 	gen.on('after-run', afterRunCallback);
-	/*@README show*/
 
 	gen.run();
-
-	/*@README end*/
 };

@@ -1,9 +1,7 @@
 var SpritesheetGenerator = require('../../index');
 
 module.exports = function (afterRunCallback) {
-
-	/*@README example*/
-
+	
 	var path = require('path');
 
 	var gen = new SpritesheetGenerator({
@@ -13,16 +11,12 @@ module.exports = function (afterRunCallback) {
 		processorOptions: {
 			stylus: {
 				imageUrlGenerationStrategy: 'relative',
-				imageUrlGenerationStrategyAbsoluteBaseUrl: '/img/'
+				imageUrlGenerationStrategyAbsoluteBaseUrl: '/'
 			}
 		}
 	}).inject(require('../../injection/spritesheet-generator'));
 
-	/*@README hide*/
 	gen.on('after-run', afterRunCallback);
-	/*@README show*/
 
 	gen.run();
-
-	/*@README end*/
 };
