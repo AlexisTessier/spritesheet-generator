@@ -14,3 +14,8 @@ spritesheet(spritesheetDescriptor, fullSpritesheet = false)
 			@media (-webkit-min-device-pixel-ratio: (currentResolution.resolutionValue)), (min-resolution: (currentResolution.minDpi)dpi)
 				resolutionBackgroundImageUrl = currentResolution.url
 				background-image: url(resolutionBackgroundImageUrl)
+
+sprite(spriteDescriptor)
+	width: (spriteDescriptor.width)px
+	height: (spriteDescriptor.height)px
+	background-position: (-(spriteDescriptor.x)px) (-(spriteDescriptor.y)px)
