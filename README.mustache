@@ -14,7 +14,7 @@
 
 Note
 ----
-The module is not fully tested. So bugs or unexpected behaviour can happen (Sorry for the trouble).
+The module is not fully tested. So bugs or unexpected behaviour can happen (Sorry for the troubles waiting a clean version 2.0.0).
 
 Purpose
 -------
@@ -52,48 +52,5 @@ gen.run();
 This basic usage example will take all the folders in the **inputPath**, and create one spritesheet for each, from all .png files in it. Note that **inputPath** can be a glob or an array of glob. The spritesheets (with the @2x version) and the preprocessor files are saved in **outputPath**
 
 [See examples](https://github.com/AlexisTessier/spritesheet-generator/tree/master/examples) to see the kind of files which are generated.
-
-Options
--------
-
-| name | type | default value | description |
-|------|------|---------------|-------------|
-| inputPath | *array* or *string* | none | The path or a glob targeting files folder. Each folder will generate a distinct spritesheet |
-| inputSpritesheetPath | *array* or *string* | inputPath | An alias for inputPath |
-| outputPath | *string* or *function* | none | The path to the folder where you want to save spritesheets and preprocessor files. If a function is used, it takes *(spritesheetData, spritesheetGenerator)* as parameters and must return a folder path |
-
-
-```
-//TO DO
-//Document all options
-
-/*
-inputSpritePath = '*'+SPRITESHEET_FILE_EXTENSION,
-spritesheetsOutputPath = outputPath,
-stylesheetsOutputPath = outputPath,
-processor = 'css',
-processorOptions = {},
-utilsPrefix = '',
-utilsSuffix = '',
-stylesheetPrefix = '',
-stylesheetSuffix = '',
-spritesheetPrefix = '',
-spritesheetSuffix = '',
-retina = true,
-sourceResolution = retina ? 2 : 1,
-resolutionList = retina ? [2, 1] : [1],
-mainResolution = 1,
-utilsResolutionSuffixFormatMethod = defaultUtilsResolutionSuffixFormatMethod,
-resolutionSuffixFormatMethod = defaultResolutionSuffixFormatMethod,
-spritesheetNameFromPathMethod = defaultSpritesheetNameFromPathMethod,
-spritesheetNameFromPathArrayTakeRightNumber = 1,
-spriteGutter = 2,
-imageUrlGenerationStrategy = 'absolute',
-imageUrlGenerationStrategyAbsoluteBaseUrl 
-*/
-
-//Document injectable dependencies
-
-//Add test suites
 
 ```
