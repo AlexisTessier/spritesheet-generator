@@ -1,6 +1,7 @@
-
 {{& package.name}}
 ==================
+
+![Project Status : work in progress](https://img.shields.io/badge/Project%20status-work%20in%20progress-lightgrey.svg)
 
 [![version](https://img.shields.io/badge/version-{{& package.version}}-blue.svg)]({{& package.homepage}})
 [![npm version](https://badge.fury.io/js/{{& furyiopath}}.svg)](https://badge.fury.io/js/{{& furyiopath}})
@@ -14,7 +15,7 @@
 
 Note
 ----
-The module is not fully tested. So bugs or unexpected behaviour can happen (Sorry for the trouble).
+The module is not fully tested. So bugs or unexpected behaviour can happen (Sorry for the troubles waiting a clean 2.0.0 version).
 
 Purpose
 -------
@@ -58,42 +59,50 @@ Options
 
 | name | type | default value | description |
 |------|------|---------------|-------------|
-| inputPath | *array* or *string* | none | The path or a glob targeting files folder. Each folder will generate a distinct spritesheet |
+| inputPath | *array* or *string* | none | The path or a glob targeting files folder. Each folder will generate a distinct spritesheet. |
 | inputSpritesheetPath | *array* or *string* | inputPath | An alias for inputPath |
-| outputPath | *string* or *function* | none | The path to the folder where you want to save spritesheets and preprocessor files. If a function is used, it takes *(spritesheetData, spritesheetGenerator)* as parameters and must return a folder path |
+| inputSpritePath | *string* | \*.png | The glob used to select the sprites files. Select all the .png files in the spritesheet folder by default. |
+| outputPath | *string* or *function* | none | The path to the folder where you want to save spritesheets and preprocessor files. If a function is used, it takes *(spritesheetData, spritesheetGenerator)* as parameters and must return a folder path. |
+| spritesheetsOutputPath | *string* | outputPath | The path to the folder where you want to save spritesheets |
+| stylesheetsOutputPath | *string* | outputPath | The path to the folder where you want to save preprocessor files |
+| processor | *string*, *function* or *array* | 'css' | A processor function takes a data object from the spritesheet generator instance as single parameters, and must return an array with the following information ['processorName', { fileName: fileContent, otherFileName: otherFileContent }, '.file_extension', data.options]. The list of files with their content are saved in the stylesheetsOutputPath. If a string is used, the generator will use one of default processor (only stylus currently)|
+| processorOptions | object | empty object | Can be used to override some options for each processor. Overridable options are : ...|
 
+####TO DO
+
++ processor functions format redefine, don't seperatate ext from file name
+
++ Document all options
 
 ```
-//TO DO
-//Document all options
-
 /*
-inputSpritePath = '*'+SPRITESHEET_FILE_EXTENSION,
-spritesheetsOutputPath = outputPath,
-stylesheetsOutputPath = outputPath,
-processor = 'css',
-processorOptions = {},
-utilsPrefix = '',
-utilsSuffix = '',
-stylesheetPrefix = '',
-stylesheetSuffix = '',
-spritesheetPrefix = '',
-spritesheetSuffix = '',
+
+utilsPrefix = '', //replace with an utils name generator function
+utilsSuffix = '', //replace with an utils name generator function
+stylesheetPrefix = '', //replace with an stylesheet name generator function
+stylesheetSuffix = '', //replace with an stylesheet name generator function
+spritesheetPrefix = '', //replace with an spritesheet name generator function
+spritesheetSuffix = '', //replace with an spritesheet name generator function
 retina = true,
 sourceResolution = retina ? 2 : 1,
 resolutionList = retina ? [2, 1] : [1],
 mainResolution = 1,
-utilsResolutionSuffixFormatMethod = defaultUtilsResolutionSuffixFormatMethod,
-resolutionSuffixFormatMethod = defaultResolutionSuffixFormatMethod,
+utilsResolutionSuffixFormatMethod = defaultUtilsResolutionSuffixFormatMethod, //remove
+resolutionSuffixFormatMethod = defaultResolutionSuffixFormatMethod, //remove
 spritesheetNameFromPathMethod = defaultSpritesheetNameFromPathMethod,
-spritesheetNameFromPathArrayTakeRightNumber = 1,
+spritesheetNameFromPathArrayTakeRightNumber = 1, //find a better name ?
 spriteGutter = 2,
 imageUrlGenerationStrategy = 'absolute',
 imageUrlGenerationStrategyAbsoluteBaseUrl 
+
 */
+```
++ add processor specific options
 
-//Document injectable dependencies
++ add css processor and others
 
-//Add test suites
++ Document injectable dependencies
+
++ Add test suites
 
 ```
